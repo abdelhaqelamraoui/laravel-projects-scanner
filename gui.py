@@ -6,15 +6,35 @@ from datetime import datetime
 import shutil
 
 from scanner import scan_for_laravel_projects
-from utils import open_folder, open_in_vscode
+from utils import open_folder, open_in_vscode, open_url
 
 
 class LaravelScannerApp(tk.Tk):
+    # Laravel & Material Design Color Palette
+    LARAVEL_RED = "#FF2D20"
+    LARAVEL_RED_DARK = "#E6291C"
+    LARAVEL_RED_LIGHT = "#FF5A4F"
+    MATERIAL_WHITE = "#FFFFFF"
+    MATERIAL_GRAY_50 = "#FAFAFA"
+    MATERIAL_GRAY_100 = "#F5F5F5"
+    MATERIAL_GRAY_200 = "#EEEEEE"
+    MATERIAL_GRAY_300 = "#E0E0E0"
+    MATERIAL_GRAY_600 = "#757575"
+    MATERIAL_GRAY_700 = "#616161"
+    MATERIAL_GRAY_800 = "#424242"
+    MATERIAL_GRAY_900 = "#212121"
+    MATERIAL_BLUE = "#2196F3"
+    MATERIAL_GREEN = "#4CAF50"
+    MATERIAL_ORANGE = "#FF9800"
+    
     def __init__(self):
         super().__init__()
         self.title("Laravel Projects Scanner")
-        self.geometry("800x500")
-
+        self.geometry("900x550")
+        
+        # Configure main window styling
+        self.configure(bg=self.MATERIAL_GRAY_50)
+        
         self.create_widgets()
         
         # Load saved folder path on startup
@@ -24,45 +44,159 @@ class LaravelScannerApp(tk.Tk):
         self.after(100, self.load_and_validate_projects)
 
     def create_widgets(self):
-        self.path_label = tk.Label(self, text="Select folder to scan:")
-        self.path_label.pack(pady=5)
-
-        self.path_entry = tk.Entry(self, width=50)
-        self.path_entry.pack(pady=5)
-
-        self.browse_btn = tk.Button(
-            self, text="Browse", command=self.browse_folder)
-        self.browse_btn.pack(pady=5)
-
-        self.scan_btn = tk.Button(self, text="Scan", command=self.start_scan)
-        self.scan_btn.pack(pady=10)
+        # Header frame with Laravel red background (compact)
+        header_frame = tk.Frame(self, bg=self.LARAVEL_RED, height=50)
+        header_frame.pack(fill=tk.X, side=tk.TOP)
+        header_frame.pack_propagate(False)
         
-        # Button to remove vendor packages from selected projects
-        self.remove_vendor_btn = tk.Button(
-            self, 
-            text="Remove vendor packages", 
-            command=self.remove_vendor_packages,
-            bg="#ff6b6b",
-            fg="white",
-            state=tk.DISABLED
+        # Title in header (compact)
+        title_label = tk.Label(
+            header_frame,
+            text="Laravel Projects Scanner",
+            font=("Segoe UI", 16, "bold"),
+            bg=self.LARAVEL_RED,
+            fg=self.MATERIAL_WHITE,
+            pady=12
         )
-        self.remove_vendor_btn.pack(pady=5)
+        title_label.pack()
+        
+        # Main content frame (compact padding)
+        content_frame = tk.Frame(self, bg=self.MATERIAL_GRAY_50)
+        content_frame.pack(fill=tk.BOTH, expand=True, padx=12, pady=12)
+        
+        # Input section with card-like appearance (compact)
+        input_card = tk.Frame(content_frame, bg=self.MATERIAL_WHITE, relief=tk.FLAT)
+        input_card.pack(fill=tk.X, pady=(0, 10))
+        
+        # Add padding inside card (compact)
+        input_inner = tk.Frame(input_card, bg=self.MATERIAL_WHITE)
+        input_inner.pack(fill=tk.X, padx=12, pady=12)
+        
+        self.path_label = tk.Label(
+            input_inner,
+            text="Select folder to scan:",
+            font=("Segoe UI", 10),
+            bg=self.MATERIAL_WHITE,
+            fg=self.MATERIAL_GRAY_800,
+            anchor="w"
+        )
+        self.path_label.pack(fill=tk.X, pady=(0, 6))
 
-        # Create scrollable frame for results
-        results_frame = tk.Frame(self)
-        results_frame.pack(pady=5, fill=tk.BOTH, expand=True)
+        # Entry field with Material Design styling (compact)
+        entry_frame = tk.Frame(input_inner, bg=self.MATERIAL_WHITE)
+        entry_frame.pack(fill=tk.X, pady=(0, 8))
+        
+        self.path_entry = tk.Entry(
+            entry_frame,
+            width=50,
+            font=("Segoe UI", 9),
+            bg=self.MATERIAL_GRAY_100,
+            fg=self.MATERIAL_GRAY_900,
+            relief=tk.FLAT,
+            borderwidth=0,
+            insertbackground=self.LARAVEL_RED
+        )
+        self.path_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, ipady=6, padx=(0, 8))
+        
+        # Material Design button style (compact, same height)
+        self.browse_btn = self.create_material_button(
+            entry_frame,
+            text="Browse",
+            command=self.browse_folder,
+            bg_color=self.MATERIAL_GRAY_300,
+            hover_color=self.MATERIAL_GRAY_200,
+            height=32
+        )
+        self.browse_btn.pack(side=tk.LEFT)
+
+        # Action buttons frame (compact)
+        buttons_frame = tk.Frame(input_inner, bg=self.MATERIAL_WHITE)
+        buttons_frame.pack(fill=tk.X, pady=(4, 0))
+        
+        self.scan_btn = self.create_material_button(
+            buttons_frame,
+            text="Scan Projects",
+            command=self.start_scan,
+            bg_color=self.LARAVEL_RED,
+            hover_color=self.LARAVEL_RED_DARK,
+            fg_color=self.MATERIAL_WHITE,
+            font_size=10,
+            height=32
+        )
+        self.scan_btn.pack(side=tk.LEFT, padx=(0, 8))
+        
+        # Button to remove vendor packages from selected projects (compact, same height)
+        self.remove_vendor_btn = self.create_material_button(
+            buttons_frame,
+            text="Remove Vendor Packages",
+            command=self.remove_vendor_packages,
+            bg_color=self.MATERIAL_ORANGE,
+            hover_color="#F57C00",
+            fg_color=self.MATERIAL_WHITE,
+            state=tk.DISABLED,
+            height=32
+        )
+        self.remove_vendor_btn.pack(side=tk.LEFT)
+
+        # Footer frame for status and credits (packed first to reserve space)
+        footer_frame = tk.Frame(content_frame, bg=self.MATERIAL_GRAY_50, height=30)
+        footer_frame.pack(side=tk.BOTTOM, fill=tk.X)
+        footer_frame.pack_propagate(False)
+        
+        # Results section with card-like appearance (compact)
+        # Use a container frame to properly manage space
+        results_container = tk.Frame(content_frame, bg=self.MATERIAL_GRAY_50)
+        results_container.pack(fill=tk.BOTH, expand=True, pady=(0, 0))
+        
+        results_card = tk.Frame(results_container, bg=self.MATERIAL_WHITE, relief=tk.FLAT)
+        results_card.pack(fill=tk.BOTH, expand=True)
+        
+        # Results header (compact)
+        results_header = tk.Frame(results_card, bg=self.MATERIAL_GRAY_100, height=32)
+        results_header.pack(fill=tk.X, side=tk.TOP)
+        results_header.pack_propagate(False)
+        
+        results_title = tk.Label(
+            results_header,
+            text="Laravel Projects",
+            font=("Segoe UI", 10, "bold"),
+            bg=self.MATERIAL_GRAY_100,
+            fg=self.MATERIAL_GRAY_800,
+            anchor="w",
+            padx=12
+        )
+        results_title.pack(side=tk.LEFT, fill=tk.Y)
+        
+        # Create scrollable frame for results (compact)
+        results_frame = tk.Frame(results_card, bg=self.MATERIAL_WHITE)
+        results_frame.pack(fill=tk.BOTH, expand=True, padx=8, pady=8)
         
         # Canvas and scrollbar for scrolling
-        self.results_canvas = tk.Canvas(results_frame)
-        scrollbar = ttk.Scrollbar(results_frame, orient="vertical", command=self.results_canvas.yview)
-        self.results_scrollable_frame = tk.Frame(self.results_canvas)
+        self.results_canvas = tk.Canvas(
+            results_frame,
+            bg=self.MATERIAL_WHITE,
+            highlightthickness=0
+        )
+        scrollbar = ttk.Scrollbar(
+            results_frame,
+            orient="vertical",
+            command=self.results_canvas.yview
+        )
+        self.results_scrollable_frame = tk.Frame(
+            self.results_canvas,
+            bg=self.MATERIAL_WHITE
+        )
         
         def on_frame_configure(event):
             self.results_canvas.configure(scrollregion=self.results_canvas.bbox("all"))
         
         self.results_scrollable_frame.bind("<Configure>", on_frame_configure)
         
-        self.canvas_window = self.results_canvas.create_window((0, 0), window=self.results_scrollable_frame, anchor="nw")
+        self.canvas_window = self.results_canvas.create_window(
+            (0, 0),
+            window=self.results_scrollable_frame,
+            anchor="nw"
+        )
         self.results_canvas.configure(yscrollcommand=scrollbar.set)
         
         # Bind mouse wheel scrolling
@@ -82,8 +216,102 @@ class LaravelScannerApp(tk.Tk):
         # Store project rows for selection
         self.project_rows = []
 
-        self.status_label = tk.Label(self, text="")
-        self.status_label.pack(pady=5)
+        # Footer inner frame for proper layout
+        footer_inner = tk.Frame(footer_frame, bg=self.MATERIAL_GRAY_50)
+        footer_inner.pack(fill=tk.BOTH, expand=True, padx=12, pady=4)
+        
+        # Status label with Material Design styling (compact)
+        self.status_label = tk.Label(
+            footer_inner,
+            text="Ready to scan",
+            font=("Segoe UI", 9),
+            bg=self.MATERIAL_GRAY_50,
+            fg=self.MATERIAL_GRAY_600
+        )
+        self.status_label.pack(side=tk.LEFT)
+        
+        # Made with love credit link (bottom right)
+        credit_text = "Made with ❤️ by "
+        author_name = "Abdelhaq El Amraoui"  # Change this to your name
+        author_url = "https://github.com/abdelhaqelamraoui/laravel-projects-scanner"  # Change this to your website/URL
+        
+        author_link = tk.Label(
+            footer_inner,
+            text=author_name,
+            font=("Segoe UI", 8, "underline"),
+            bg=self.MATERIAL_GRAY_50,
+            fg=self.MATERIAL_BLUE,
+            cursor="hand2"
+        )
+        author_link.pack(side=tk.RIGHT)
+        author_link.bind("<Button-1>", lambda e: open_url(author_url))
+        
+        credit_label = tk.Label(
+            footer_inner,
+            text=credit_text,
+            font=("Segoe UI", 8),
+            bg=self.MATERIAL_GRAY_50,
+            fg=self.MATERIAL_GRAY_600
+        )
+        credit_label.pack(side=tk.RIGHT, padx=(0, 2))
+        
+        # Add hover effect for link
+        def on_link_enter(e):
+            author_link.config(fg=self.LARAVEL_RED)
+        
+        def on_link_leave(e):
+            author_link.config(fg=self.MATERIAL_BLUE)
+        
+        author_link.bind("<Enter>", on_link_enter)
+        author_link.bind("<Leave>", on_link_leave)
+    
+    def create_material_button(self, parent, text, command, bg_color, hover_color, 
+                               fg_color="#212121", font_size=9, state=tk.NORMAL, height=32):
+        """Create a Material Design styled button (compact, consistent height)"""
+        btn = tk.Button(
+            parent,
+            text=text,
+            command=command,
+            bg=bg_color,
+            fg=fg_color,
+            font=("Segoe UI", font_size, "bold"),
+            relief=tk.FLAT,
+            borderwidth=0,
+            padx=12,
+            pady=6,
+            cursor="hand2",
+            state=state,
+            activebackground=hover_color,
+            activeforeground=fg_color
+        )
+        
+        # Add hover effects
+        def on_enter(e):
+            if btn['state'] == tk.NORMAL:
+                btn.config(bg=hover_color)
+        
+        def on_leave(e):
+            if btn['state'] == tk.NORMAL:
+                btn.config(bg=bg_color)
+        
+        btn.bind("<Enter>", on_enter)
+        btn.bind("<Leave>", on_leave)
+        
+        return btn
+        
+        # Add hover effects
+        def on_enter(e):
+            if btn['state'] == tk.NORMAL:
+                btn.config(bg=hover_color)
+        
+        def on_leave(e):
+            if btn['state'] == tk.NORMAL:
+                btn.config(bg=bg_color)
+        
+        btn.bind("<Enter>", on_enter)
+        btn.bind("<Leave>", on_leave)
+        
+        return btn
 
     def save_folder_path(self, folder_path):
         """Save the scanned folder path to a file"""
@@ -166,55 +394,85 @@ class LaravelScannerApp(tk.Tk):
         return os.path.exists(vendor_path) and os.path.isdir(vendor_path)
     
     def add_project_row(self, project_path):
-        """Add a row with a VSCode button, vendor indicator, checkbox, and project path"""
-        row_frame = tk.Frame(self.results_scrollable_frame, relief=tk.RAISED, borderwidth=1)
-        row_frame.pack(fill=tk.X, padx=2, pady=1)
+        """Add a row with a VSCode button, vendor indicator, checkbox, and project path (compact)"""
+        # Create card-like row frame with Material Design styling (compact)
+        row_frame = tk.Frame(
+            self.results_scrollable_frame,
+            bg=self.MATERIAL_WHITE,
+            relief=tk.FLAT
+        )
+        row_frame.pack(fill=tk.X, padx=3, pady=3)
+        
+        # Inner frame with border effect (simulating elevation, compact)
+        inner_frame = tk.Frame(
+            row_frame,
+            bg=self.MATERIAL_GRAY_100,
+            relief=tk.FLAT
+        )
+        inner_frame.pack(fill=tk.X, padx=1, pady=1)
+        
+        content_frame = tk.Frame(inner_frame, bg=self.MATERIAL_WHITE)
+        content_frame.pack(fill=tk.X, padx=10, pady=6)
         
         # Check if vendor directory exists
         has_vendor = self.has_vendor_directory(project_path)
         
-        # Checkbox for selection (only enabled if vendor exists)
+        # Checkbox for selection (only enabled if vendor exists, compact)
         checkbox_var = tk.BooleanVar()
         checkbox = tk.Checkbutton(
-            row_frame,
+            content_frame,
             variable=checkbox_var,
             state=tk.NORMAL if has_vendor else tk.DISABLED,
-            command=lambda: self.update_remove_button_state()
+            command=lambda: self.update_remove_button_state(),
+            bg=self.MATERIAL_WHITE,
+            activebackground=self.MATERIAL_WHITE,
+            selectcolor=self.MATERIAL_WHITE
         )
-        checkbox.pack(side=tk.LEFT, padx=5, pady=2)
+        checkbox.pack(side=tk.LEFT, padx=(0, 8))
         
-        # Vendor indicator
+        # Vendor indicator with Material Design styling (compact)
         vendor_indicator = tk.Label(
-            row_frame,
+            content_frame,
             text="✓" if has_vendor else "✗",
-            fg="green" if has_vendor else "gray",
-            font=("Arial", 10, "bold"),
-            width=3
+            fg=self.MATERIAL_GREEN if has_vendor else self.MATERIAL_GRAY_600,
+            bg=self.MATERIAL_WHITE,
+            font=("Segoe UI", 10, "bold"),
+            width=2
         )
-        vendor_indicator.pack(side=tk.LEFT, padx=2)
+        vendor_indicator.pack(side=tk.LEFT, padx=(0, 8))
         
-        # VSCode button
-        vscode_btn = tk.Button(
-            row_frame, 
-            text="Open in VSCode", 
-            command=lambda p=project_path: open_in_vscode(p),
-            width=15
-        )
-        vscode_btn.pack(side=tk.LEFT, padx=5, pady=2)
-        
-        # Project path label (selectable)
+        # Project path label (selectable) with Material Design typography (compact)
         path_label = tk.Label(
-            row_frame, 
-            text=project_path, 
+            content_frame,
+            text=project_path,
             anchor="w",
-            cursor="hand2"
+            cursor="hand2",
+            bg=self.MATERIAL_WHITE,
+            fg=self.MATERIAL_GRAY_900,
+            font=("Segoe UI", 9),
+            padx=8
         )
-        path_label.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=5)
+        path_label.pack(side=tk.LEFT, fill=tk.X, expand=True)
         path_label.bind("<Double-1>", lambda e, p=project_path: open_folder(p))
+        
+        # VSCode button with Material Design styling (compact, same height)
+        vscode_btn = self.create_material_button(
+            content_frame,
+            text="VSCode",
+            command=lambda p=project_path: open_in_vscode(p),
+            bg_color=self.MATERIAL_BLUE,
+            hover_color="#1976D2",
+            fg_color=self.MATERIAL_WHITE,
+            font_size=8,
+            height=32
+        )
+        vscode_btn.pack(side=tk.LEFT, padx=(8, 0))
         
         # Store row reference
         self.project_rows.append({
             'frame': row_frame,
+            'inner_frame': inner_frame,
+            'content_frame': content_frame,
             'path': project_path,
             'has_vendor': has_vendor,
             'checkbox': checkbox,
@@ -292,7 +550,7 @@ class LaravelScannerApp(tk.Tk):
                         row['has_vendor'] = has_vendor
                         row['vendor_indicator'].config(
                             text="✓" if has_vendor else "✗",
-                            fg="green" if has_vendor else "gray"
+                            fg=self.MATERIAL_GREEN if has_vendor else self.MATERIAL_GRAY_600
                         )
                         row['checkbox'].config(state=tk.NORMAL if has_vendor else tk.DISABLED)
                         if not has_vendor:

@@ -2,6 +2,7 @@ import os
 import platform
 import subprocess
 import shutil
+import webbrowser
 
 
 def open_folder(path):
@@ -50,3 +51,11 @@ def open_in_vscode(path):
             subprocess.Popen(["code", path])
         except Exception:
             print("VSCode not found. Please install VSCode and ensure 'code' command is in PATH.")
+
+
+def open_url(url):
+    """Open a URL in the default web browser"""
+    try:
+        webbrowser.open(url)
+    except Exception as e:
+        print(f"Error opening URL: {e}")
