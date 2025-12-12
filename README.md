@@ -42,12 +42,27 @@ The application features a clean, Material Design-inspired interface with:
 
 ## 🚀 Installation
 
-### Prerequisites
+### Quick Start (Windows)
+
+**Download the ready-to-use executable:**
+
+📥 **[Download LaravelProjectScanner.exe](https://github.com/abdelhaqelamraoui/laravel-projects-scanner/releases/latest)** (Windows)
+
+Simply download and run the `.exe` file - no Python installation required!
+
+> **📌 Note:** Linux and macOS versions are coming soon! 🐧🍎
+
+### Development Installation
+
+If you want to run from source or contribute to the project:
+
+#### Prerequisites
 
 - Python 3.6 or higher
 - Tkinter (usually included with Python)
+- pip (Python package manager)
 
-### Setup
+#### Setup
 
 1. Clone the repository:
 ```bash
@@ -55,12 +70,38 @@ git clone https://github.com/abdelhaqelamraoui/laravel-projects-scanner.git
 cd laravel-projects-scanner
 ```
 
-2. Run the application:
+2. Install dependencies:
+```bash
+pip install -r requirements.txt
+```
+
+> **Note:** The `requirements.txt` file contains dependencies needed for building the executable with PyInstaller. The application itself uses only Python standard library modules, so you can run it directly with `python main.py` without installing dependencies if you don't plan to build the executable.
+
+3. Run the application:
 ```bash
 python main.py
 ```
 
-No additional dependencies required! The application uses only Python standard library modules.
+### Building Executable (Windows)
+
+To build your own Windows executable:
+
+1. Make sure you have installed the dependencies:
+```bash
+pip install -r requirements.txt
+```
+
+2. Build the executable using PyInstaller:
+```bash
+pyinstaller main.py --onefile --windowed --name "LaravelProjectScanner"
+```
+
+The executable will be created in the `dist/` folder as `LaravelProjectScanner.exe`.
+
+**Build Command Breakdown:**
+- `--onefile`: Creates a single executable file
+- `--windowed`: Hides the console window (GUI-only mode)
+- `--name "LaravelProjectScanner"`: Sets the output executable name
 
 ## 📖 Usage
 
@@ -93,6 +134,7 @@ laravel_scanner/
 ├── gui.py               # Main GUI application with Material Design styling
 ├── scanner.py           # Core scanning logic for detecting Laravel projects
 ├── utils.py             # Utility functions (file operations, VSCode integration)
+├── requirements.txt     # Python dependencies for development
 ├── laravel_projects.txt # Stored project paths (auto-generated)
 ├── scanned_folder.txt   # Last scanned folder path (auto-generated)
 └── README.md           # This file
