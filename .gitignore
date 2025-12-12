@@ -12,3 +12,5 @@ coverage/
 *.iml
 *.swp
 .vscode/
+scanned_folder.txt
+laravel_projects.txt

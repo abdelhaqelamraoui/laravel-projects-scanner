@@ -3,6 +3,7 @@ import threading
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 from datetime import datetime
+import shutil
 
 from scanner import scan_for_laravel_projects
 from utils import open_folder, open_in_vscode
@@ -15,6 +16,9 @@ class LaravelScannerApp(tk.Tk):
         self.geometry("800x500")
 
         self.create_widgets()
+        
+        # Load saved folder path on startup
+        self.load_saved_folder_path()
         
         # Load and validate projects from file on startup
         self.after(100, self.load_and_validate_projects)
@@ -32,6 +36,17 @@ class LaravelScannerApp(tk.Tk):
 
         self.scan_btn = tk.Button(self, text="Scan", command=self.start_scan)
         self.scan_btn.pack(pady=10)
+        
+        # Button to remove vendor packages from selected projects
+        self.remove_vendor_btn = tk.Button(
+            self, 
+            text="Remove vendor packages", 
+            command=self.remove_vendor_packages,
+            bg="#ff6b6b",
+            fg="white",
+            state=tk.DISABLED
+        )
+        self.remove_vendor_btn.pack(pady=5)
 
         # Create scrollable frame for results
         results_frame = tk.Frame(self)
@@ -70,17 +85,44 @@ class LaravelScannerApp(tk.Tk):
         self.status_label = tk.Label(self, text="")
         self.status_label.pack(pady=5)
 
+    def save_folder_path(self, folder_path):
+        """Save the scanned folder path to a file"""
+        filename = "scanned_folder.txt"
+        try:
+            with open(filename, 'w', encoding='utf-8') as f:
+                f.write(folder_path)
+        except Exception as e:
+            print(f"Error saving folder path: {e}")
+    
+    def load_saved_folder_path(self):
+        """Load the saved folder path from file"""
+        filename = "scanned_folder.txt"
+        if os.path.exists(filename):
+            try:
+                with open(filename, 'r', encoding='utf-8') as f:
+                    folder_path = f.read().strip()
+                    if folder_path and os.path.isdir(folder_path):
+                        self.path_entry.delete(0, tk.END)
+                        self.path_entry.insert(0, folder_path)
+            except Exception as e:
+                print(f"Error loading folder path: {e}")
+    
     def browse_folder(self):
         folder_selected = filedialog.askdirectory()
         if folder_selected:
             self.path_entry.delete(0, tk.END)
             self.path_entry.insert(0, folder_selected)
+            # Save the selected folder path
+            self.save_folder_path(folder_selected)
 
     def start_scan(self):
         root_dir = self.path_entry.get()
         if not root_dir or not os.path.isdir(root_dir):
             messagebox.showerror("Error", "Please select a valid directory")
             return
+
+        # Save the folder path
+        self.save_folder_path(root_dir)
 
         # Clear previous results
         for widget in self.results_scrollable_frame.winfo_children():
@@ -118,10 +160,38 @@ class LaravelScannerApp(tk.Tk):
             widget.destroy()
         self.project_rows = []
     
+    def has_vendor_directory(self, project_path):
+        """Check if project has a vendor directory"""
+        vendor_path = os.path.join(project_path, 'vendor')
+        return os.path.exists(vendor_path) and os.path.isdir(vendor_path)
+    
     def add_project_row(self, project_path):
-        """Add a row with a VSCode button and project path"""
+        """Add a row with a VSCode button, vendor indicator, checkbox, and project path"""
         row_frame = tk.Frame(self.results_scrollable_frame, relief=tk.RAISED, borderwidth=1)
         row_frame.pack(fill=tk.X, padx=2, pady=1)
+        
+        # Check if vendor directory exists
+        has_vendor = self.has_vendor_directory(project_path)
+        
+        # Checkbox for selection (only enabled if vendor exists)
+        checkbox_var = tk.BooleanVar()
+        checkbox = tk.Checkbutton(
+            row_frame,
+            variable=checkbox_var,
+            state=tk.NORMAL if has_vendor else tk.DISABLED,
+            command=lambda: self.update_remove_button_state()
+        )
+        checkbox.pack(side=tk.LEFT, padx=5, pady=2)
+        
+        # Vendor indicator
+        vendor_indicator = tk.Label(
+            row_frame,
+            text="✓" if has_vendor else "✗",
+            fg="green" if has_vendor else "gray",
+            font=("Arial", 10, "bold"),
+            width=3
+        )
+        vendor_indicator.pack(side=tk.LEFT, padx=2)
         
         # VSCode button
         vscode_btn = tk.Button(
@@ -140,30 +210,111 @@ class LaravelScannerApp(tk.Tk):
             cursor="hand2"
         )
         path_label.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=5)
-        path_label.bind("<Button-1>", lambda e, p=project_path: self.select_project(p))
         path_label.bind("<Double-1>", lambda e, p=project_path: open_folder(p))
         
         # Store row reference
         self.project_rows.append({
             'frame': row_frame,
             'path': project_path,
-            'selected': False
+            'has_vendor': has_vendor,
+            'checkbox': checkbox,
+            'checkbox_var': checkbox_var,
+            'vendor_indicator': vendor_indicator
         })
         
         # Update canvas scroll region
         self.results_canvas.update_idletasks()
         self.results_canvas.configure(scrollregion=self.results_canvas.bbox("all"))
+        
+        # Update remove button state
+        self.update_remove_button_state()
     
-    def select_project(self, project_path):
-        """Select/deselect a project row"""
+    def update_remove_button_state(self):
+        """Update the remove vendor button state based on selected projects"""
+        selected_count = 0
         for row in self.project_rows:
-            if row['path'] == project_path:
-                row['selected'] = not row['selected']
-                if row['selected']:
-                    row['frame'].config(bg='lightblue')
+            if row.get('has_vendor') and row.get('checkbox_var'):
+                if row['checkbox_var'].get():
+                    selected_count += 1
+        if selected_count > 0:
+            self.remove_vendor_btn.config(state=tk.NORMAL)
+        else:
+            self.remove_vendor_btn.config(state=tk.DISABLED)
+    
+    def remove_vendor_packages(self):
+        """Remove vendor directories from selected projects"""
+        selected_projects = []
+        for row in self.project_rows:
+            if row.get('has_vendor') and row.get('checkbox_var'):
+                if row['checkbox_var'].get():
+                    selected_projects.append(row['path'])
+        
+        if not selected_projects:
+            messagebox.showinfo("Info", "No projects with vendor directory selected")
+            return
+        
+        # Confirm deletion
+        count = len(selected_projects)
+        confirm = messagebox.askyesno(
+            "Confirm Removal",
+            f"Are you sure you want to remove the vendor directory from {count} project(s)?\n\n"
+            f"This action cannot be undone. You will need to run 'composer install' to restore packages."
+        )
+        
+        if not confirm:
+            return
+        
+        # Remove vendor directories
+        self.status_label.config(text=f"Removing vendor directories from {count} project(s)...")
+        self.remove_vendor_btn.config(state=tk.DISABLED)
+        
+        def remove_vendors():
+            removed_count = 0
+            failed_count = 0
+            failed_projects = []
+            
+            for project_path in selected_projects:
+                vendor_path = os.path.join(project_path, 'vendor')
+                try:
+                    if os.path.exists(vendor_path):
+                        shutil.rmtree(vendor_path)
+                        removed_count += 1
+                except Exception as e:
+                    failed_count += 1
+                    failed_projects.append((project_path, str(e)))
+            
+            # Update UI
+            def update_ui():
+                # Refresh vendor indicators
+                for row in self.project_rows:
+                    if row['path'] in selected_projects:
+                        has_vendor = self.has_vendor_directory(row['path'])
+                        row['has_vendor'] = has_vendor
+                        row['vendor_indicator'].config(
+                            text="✓" if has_vendor else "✗",
+                            fg="green" if has_vendor else "gray"
+                        )
+                        row['checkbox'].config(state=tk.NORMAL if has_vendor else tk.DISABLED)
+                        if not has_vendor:
+                            row['checkbox_var'].set(False)
+                
+                self.update_remove_button_state()
+                
+                if failed_count == 0:
+                    self.status_label.config(
+                        text=f"Successfully removed vendor directories from {removed_count} project(s)"
+                    )
                 else:
-                    row['frame'].config(bg='SystemButtonFace')
-                break
+                    error_msg = f"Removed from {removed_count} project(s). Failed: {failed_count}"
+                    if failed_projects:
+                        error_msg += "\n" + "\n".join([f"  - {p}: {e}" for p, e in failed_projects[:3]])
+                    self.status_label.config(text=error_msg)
+                    if len(failed_projects) > 3:
+                        messagebox.showerror("Some removals failed", error_msg)
+            
+            self.after(0, update_ui)
+        
+        threading.Thread(target=remove_vendors, daemon=True).start()
 
     def read_projects_from_file(self):
         """Read project paths from the file"""
