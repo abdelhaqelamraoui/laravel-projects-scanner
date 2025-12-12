@@ -15,6 +15,9 @@ class LaravelScannerApp(tk.Tk):
         self.geometry("800x500")
 
         self.create_widgets()
+        
+        # Load and validate projects from file on startup
+        self.after(100, self.load_and_validate_projects)
 
     def create_widgets(self):
         self.path_label = tk.Label(self, text="Select folder to scan:")
@@ -162,24 +165,116 @@ class LaravelScannerApp(tk.Tk):
                     row['frame'].config(bg='SystemButtonFace')
                 break
 
-    def save_results_to_file(self, projects, root_dir):
-        """Save the scan results to a text file"""
+    def read_projects_from_file(self):
+        """Read project paths from the file"""
+        filename = "laravel_projects.txt"
+        projects = []
+        
+        if not os.path.exists(filename):
+            return projects
+        
+        try:
+            with open(filename, 'r', encoding='utf-8') as f:
+                lines = f.readlines()
+                
+            # Find the separator line and get paths after it
+            separator_found = False
+            for line in lines:
+                line = line.strip()
+                if separator_found and line:  # After separator and not empty
+                    # Check if it's a valid path (not a header line)
+                    # A valid path should not be all equals signs and should look like a path
+                    if line and not line.startswith("=") and (os.path.sep in line or (len(line) > 2 and line[1] == ':')):
+                        projects.append(line)
+                elif line and all(c == '=' for c in line) and len(line) >= 10:  # Separator line (all equals, at least 10 chars)
+                    separator_found = True
+                    
+        except Exception as e:
+            print(f"Error reading file: {e}")
+        
+        return projects
+    
+    def validate_projects(self, projects):
+        """Check which projects still exist and return only valid ones"""
+        valid_projects = []
+        for project_path in projects:
+            if os.path.exists(project_path) and os.path.isdir(project_path):
+                valid_projects.append(project_path)
+        return valid_projects
+    
+    def update_file_with_projects(self, projects):
+        """Update the file with only valid projects"""
         filename = "laravel_projects.txt"
         
         try:
             with open(filename, 'w', encoding='utf-8') as f:
                 f.write(f"Laravel Projects Scan Results\n")
                 f.write(f"Scan Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
-                f.write(f"Scanned Directory: {root_dir}\n")
                 f.write(f"Total Projects Found: {len(projects)}\n")
                 f.write(f"{'='*80}\n\n")
                 
                 for proj in projects:
                     f.write(f"{proj}\n")
+        except Exception as e:
+            print(f"Error updating file: {e}")
+    
+    def load_and_validate_projects(self):
+        """Load projects from file, validate them, and display"""
+        self.status_label.config(text="Loading projects from file...")
+        
+        # Run in thread to avoid freezing UI
+        def validate_and_display():
+            projects = self.read_projects_from_file()
+            valid_projects = self.validate_projects(projects)
+            deleted_count = len(projects) - len(valid_projects)
+            
+            # Update file if some projects were deleted
+            if deleted_count > 0:
+                self.update_file_with_projects(valid_projects)
+            
+            # Display valid projects in UI
+            self.after(0, self.clear_results)
+            
+            def display_projects():
+                for proj in valid_projects:
+                    self.add_project_row(proj)
+                
+                if deleted_count > 0:
+                    self.status_label.config(
+                        text=f"Loaded {len(valid_projects)} projects ({deleted_count} deleted projects removed)")
+                else:
+                    self.status_label.config(
+                        text=f"Loaded {len(valid_projects)} projects from file")
+            
+            self.after(0, display_projects)
+        
+        threading.Thread(target=validate_and_display, daemon=True).start()
+    
+    def save_results_to_file(self, projects, root_dir):
+        """Save the scan results to a text file"""
+        filename = "laravel_projects.txt"
+        
+        try:
+            # Read existing projects to merge
+            existing_projects = self.read_projects_from_file()
+            
+            # Combine existing and new projects, removing duplicates
+            all_projects = list(set(existing_projects + projects))
+            all_projects.sort()  # Sort for consistency
+            
+            with open(filename, 'w', encoding='utf-8') as f:
+                f.write(f"Laravel Projects Scan Results\n")
+                f.write(f"Scan Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+                f.write(f"Scanned Directory: {root_dir}\n")
+                f.write(f"Total Projects Found: {len(all_projects)}\n")
+                f.write(f"{'='*80}\n\n")
+                
+                for proj in all_projects:
+                    f.write(f"{proj}\n")
             
             # Update status to show file was saved
             self.after(0, lambda: self.status_label.config(
-                text=f"Found {len(projects)} Laravel projects - Saved to {filename}"))
+                text=f"Found {len(projects)} new projects - Total: {len(all_projects)} - Saved to {filename}"))
         except Exception as e:
             # Update status to show error
             self.after(0, lambda: self.status_label.config(
