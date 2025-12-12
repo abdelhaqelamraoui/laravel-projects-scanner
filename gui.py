@@ -6,7 +6,7 @@ from datetime import datetime
 import shutil
 
 from scanner import scan_for_laravel_projects
-from utils import open_folder, open_in_vscode, open_url
+from utils import open_folder, open_in_vscode, open_url, get_data_file_path
 
 
 class LaravelScannerApp(tk.Tk):
@@ -315,7 +315,7 @@ class LaravelScannerApp(tk.Tk):
 
     def save_folder_path(self, folder_path):
         """Save the scanned folder path to a file"""
-        filename = "scanned_folder.txt"
+        filename = get_data_file_path("doscanned_folder")
         try:
             with open(filename, 'w', encoding='utf-8') as f:
                 f.write(folder_path)
@@ -324,7 +324,7 @@ class LaravelScannerApp(tk.Tk):
     
     def load_saved_folder_path(self):
         """Load the saved folder path from file"""
-        filename = "scanned_folder.txt"
+        filename = get_data_file_path("doscanned_folder")
         if os.path.exists(filename):
             try:
                 with open(filename, 'r', encoding='utf-8') as f:
@@ -576,7 +576,7 @@ class LaravelScannerApp(tk.Tk):
 
     def read_projects_from_file(self):
         """Read project paths from the file"""
-        filename = "laravel_projects.txt"
+        filename = get_data_file_path("dolaravel_projects")
         projects = []
         
         if not os.path.exists(filename):
@@ -613,7 +613,7 @@ class LaravelScannerApp(tk.Tk):
     
     def update_file_with_projects(self, projects):
         """Update the file with only valid projects"""
-        filename = "laravel_projects.txt"
+        filename = get_data_file_path("dolaravel_projects")
         
         try:
             with open(filename, 'w', encoding='utf-8') as f:
@@ -661,7 +661,7 @@ class LaravelScannerApp(tk.Tk):
     
     def save_results_to_file(self, projects, root_dir):
         """Save the scan results to a text file"""
-        filename = "laravel_projects.txt"
+        filename = get_data_file_path("dolaravel_projects")
         
         try:
             # Read existing projects to merge
@@ -681,9 +681,10 @@ class LaravelScannerApp(tk.Tk):
                 for proj in all_projects:
                     f.write(f"{proj}\n")
             
-            # Update status to show file was saved
+            # Update status to show file was saved (show just the filename, not full path)
+            file_display_name = os.path.basename(filename)
             self.after(0, lambda: self.status_label.config(
-                text=f"Found {len(projects)} new projects - Total: {len(all_projects)} - Saved to {filename}"))
+                text=f"Found {len(projects)} new projects - Total: {len(all_projects)} - Saved to {file_display_name}"))
         except Exception as e:
             # Update status to show error
             self.after(0, lambda: self.status_label.config(

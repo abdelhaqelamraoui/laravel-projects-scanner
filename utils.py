@@ -59,3 +59,32 @@ def open_url(url):
         webbrowser.open(url)
     except Exception as e:
         print(f"Error opening URL: {e}")
+
+
+def get_persistent_data_dir():
+    """Get OS-specific persistent data directory for storing application data"""
+    system = platform.system()
+    
+    if system == "Windows":
+        # Windows: AppData\Local
+        base_dir = os.path.expanduser(r"~\AppData\Local")
+    elif system == "Darwin":  # macOS
+        # macOS: ~/Library/Application Support
+        base_dir = os.path.expanduser("~/Library/Application Support")
+    else:  # Linux and others
+        # Linux: ~/.config
+        base_dir = os.path.expanduser("~/.config")
+    
+    # Create hidden folder starting with "do"
+    hidden_folder = os.path.join(base_dir, ".do-laravel-scanner")
+    
+    # Create directory if it doesn't exist
+    os.makedirs(hidden_folder, exist_ok=True)
+    
+    return hidden_folder
+
+
+def get_data_file_path(filename):
+    """Get full path for a data file in the persistent directory"""
+    data_dir = get_persistent_data_dir()
+    return os.path.join(data_dir, filename)
